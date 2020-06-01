@@ -1,2 +1,2 @@
 # cheetahinfer
-An C++ inference SDK based on TensorRT
+A C++ inference SDK based on TensorRT
