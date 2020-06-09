@@ -16,9 +16,10 @@ CheetahInfer has several dependencies:
   - tested on version 5.4.0
 After the installation of dependencies, we should modify the `TENSORRT_INSTALL_DIR` and `OPENCV_INSTALL_DIR` accordingly.
 
-## Prepare ONNX file
+## Preparation for model and data
 - Prepare the ONNX file
-- Modify the ONNX file path and some related configuration in `main.cpp` in `classifier` or `retinanet` folder.  
+- Modify the ONNX file path and some related configuration in `main.cpp` in `classifier` or `retinanet` folder
+- Get some images
 
 ## Compilation and running
 ```
