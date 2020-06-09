@@ -22,7 +22,7 @@ After the installation of above dependencies, we need modify the `TENSORRT_INSTA
 - Modify the ONNX file path
   - Some related configurations in `main.cpp` in `classifier` or `retinanet` folder also need be corrected accordingly.
 - Get some images for testing
-- Fill in anchor setting`setHp` function in `src/task/retinanet.cpp`
+- Fill in anchor setting in `setHp` function of file `src/task/retinanet.cpp`
   - If you are only interested in classifier, you need not do this.
 
 ## Compilation and running
