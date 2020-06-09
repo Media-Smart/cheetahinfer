@@ -19,7 +19,8 @@ After the installation of above dependencies, we need modify the `TENSORRT_INSTA
 ## Preparation for model and data
 - Prepare the ONNX file
   - If your model has a PyTorch format, you can use [vedadep](https://github.com/Media-Smart/volksdep) to convert PyTorch model to ONNX model.
-- Modify the ONNX file path and some related configurations in `main.cpp` in `classifier` or `retinanet` folder
+- Modify the ONNX file path
+  - some related configurations in `main.cpp` in `classifier` or `retinanet` folder also need be corrected accordingly.
 - Get some images for testing
 
 ## Compilation and running
