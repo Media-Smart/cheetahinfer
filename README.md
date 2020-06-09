@@ -1,5 +1,5 @@
-# CheetahInfer
-A C++ inference SDK based on TensorRT
+## Introduction
+CheetahInfer is a C++ inference SDK based on TensorRT.
 
 ## Prerequisites
 CheetahInfer has several dependencies:
@@ -33,3 +33,5 @@ cd classifier
 make
 ./build/main --imgfp /path/to/image
 ```
+## Credits
+We got a lot of code from [TensorRT](https://github.com/NVIDIA/TensorRT) and [retinanet-examples](https://github.com/NVIDIA/retinanet-examples).
