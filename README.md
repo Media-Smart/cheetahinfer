@@ -19,7 +19,7 @@ After the installation of above dependencies, we need modify the `TENSORRT_INSTA
 ## Preparation for model and data
 - Prepare the ONNX file
   - If your model has a PyTorch format, you can use [vedadep](https://github.com/Media-Smart/volksdep) to convert PyTorch model to ONNX model.
-- Modify the ONNX file path and some related configuration in `main.cpp` in `classifier` or `retinanet` folder
+- Modify the ONNX file path and some related configurations in `main.cpp` in `classifier` or `retinanet` folder
 - Get some images for testing
 
 ## Compilation and running
@@ -35,5 +35,6 @@ make -j12
 ./build/main --imgfp /path/to/image
 ```
 If you want speficy which GPU to use, you can make it by setting the environment variable `CUDA_VISIBLE_DEVICES`.
+
 ## Credits
 We got a lot of code from [TensorRT](https://github.com/NVIDIA/TensorRT) and [retinanet-examples](https://github.com/NVIDIA/retinanet-examples).
