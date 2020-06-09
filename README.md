@@ -20,8 +20,10 @@ After the installation of above dependencies, we need modify the `TENSORRT_INSTA
 - Prepare the ONNX file
   - If your model has a PyTorch format, you can use [vedadep](https://github.com/Media-Smart/volksdep) to convert PyTorch model to ONNX model.
 - Modify the ONNX file path
-  - some related configurations in `main.cpp` in `classifier` or `retinanet` folder also need be corrected accordingly.
+  - Some related configurations in `main.cpp` in `classifier` or `retinanet` folder also need be corrected accordingly.
 - Get some images for testing
+- Fill in anchor setting`setHp` function in `src/task/retinanet.cpp`
+  - If you are only interested in classifier, you need not do this.
 
 ## Compilation and running
 ```
@@ -31,7 +33,7 @@ make -j12
 ```
 or
 ```
-cd classifier
+cd retinanet
 make -j12
 ./build/main --imgfp /path/to/image
 ```
