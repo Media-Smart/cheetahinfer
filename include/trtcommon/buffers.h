@@ -264,13 +264,24 @@ class BufferManager
 public:
     static const size_t kINVALID_SIZE_VALUE = ~size_t(0);
 
+    BufferManager()
+    {
+    }
+
     //!
     //! \brief Create a BufferManager for handling buffer interactions with engine.
     //!
     BufferManager(std::shared_ptr<nvinfer1::ICudaEngine> engine, const int& batchSize, const nvinfer1::IExecutionContext* context = nullptr)
-        : mEngine(engine)
-        , mBatchSize(batchSize)
+    //    : mEngine(engine)
+    //    , mBatchSize(batchSize)
     {
+        init(engine, batchSize, context);
+    }
+
+    void init(std::shared_ptr<nvinfer1::ICudaEngine> engine, const int& batchSize, const nvinfer1::IExecutionContext* context = nullptr)
+    {
+        mEngine = engine;
+        mBatchSize = batchSize;
         // Create host and device buffers
         for (int i = 0; i < mEngine->getNbBindings(); i++)
         {

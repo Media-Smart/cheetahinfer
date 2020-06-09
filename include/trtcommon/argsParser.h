@@ -103,6 +103,7 @@ struct OnnxSampleParams : public SampleParams
     std::string onnx_fp; //!< Filename of ONNX file of a network
     bool is_from_onnx;
     bool is_serialize;
+    size_t max_workspace_size;
 };
 
 //!
@@ -123,7 +124,7 @@ struct Args
     bool runInFp16{false};
     bool help{false};
     int useDLACore{-1};
-    std::vector<std::string> dataDirs;
+    std::string imgfp;
 };
 
 //!
@@ -140,7 +141,7 @@ inline bool parseArgs(Args& args, int argc, char* argv[])
         int arg;
         static struct option long_options[] = {
             {"help", no_argument, 0, 'h'},
-            {"datadir", required_argument, 0, 'd'},
+            {"imgfp", required_argument, 0, 'm'},
             {"int8", no_argument, 0, 'i'},
             {"fp16", no_argument, 0, 'f'},
             {"useDLACore", required_argument, 0, 'u'},
@@ -157,10 +158,10 @@ inline bool parseArgs(Args& args, int argc, char* argv[])
         case 'h':
             args.help = true;
             return true;
-        case 'd':
+        case 'm':
             if (optarg)
             {
-                args.dataDirs.push_back(optarg);
+                args.imgfp = optarg;
             }
             else
             {

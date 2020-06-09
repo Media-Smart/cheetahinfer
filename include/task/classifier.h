@@ -1,5 +1,5 @@
-#ifndef CHEETAH_INFER_CLASSIFIER_H
-#define CHEETAH_INFER_CLASSIFIER_H
+#ifndef CHEETAH_INFER_TASK_CLASSIFIER_H
+#define CHEETAH_INFER_TASK_CLASSIFIER_H
 
 #include <NvOnnxParser.h>
 
@@ -15,15 +15,10 @@ class Classifier: public BaseTask
 
 public:
     Classifier(const samplesCommon::OnnxSampleParams& params);
-    //    : mParams(params)
-    //    , mEngine(nullptr)
-    //{
-    //	_prepare();
-    //}
     bool infer(std::string fp);
-    bool verifyOutput(const samplesCommon::BufferManager& buffers);
-
+    bool verifyOutput();
 };
 
-}
+} // namespace cheetahinfer
+
 #endif

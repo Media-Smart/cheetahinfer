@@ -1,5 +1,5 @@
-#ifndef CHEETAH_INFER_RETINANET_H
-#define CHEETAH_INFER_RETINANET_H
+#ifndef CHEETAH_INFER_TASK_RETINANET_H
+#define CHEETAH_INFER_TASK_RETINANET_H
 
 #include <vector>
 
@@ -8,7 +8,6 @@
 
 #include "trtcommon/buffers.h"
 #include "base_task.h"
-
 
 namespace cheetahinfer{
 
@@ -19,31 +18,22 @@ class RetinaNet: public BaseTask
 
 public:
     RetinaNet(const samplesCommon::OnnxSampleParams& params);
-    //    : mParams(params)
-    //    , mEngine(nullptr)
-    //{
-    //    _set_hp();
-    //	_prepare();
-    //}
-    void build(bool is_from_onnx);
-
-    void buildFromOnnx();
-
-    bool infer(std::string fp);
-
-    bool verifyOutput(const samplesCommon::BufferManager& buffers);
+    bool infer(std::string fp) override;
+    bool verifyOutput() override;
 
 private:
-	//void _prepare();
+    // variables
     int top_n_;
 	int detections_per_im_;
     float score_thresh_;
     float nms_thresh_;
     std::vector<std::vector<float>> anchors_;
 
+    // functions
 	void setHp();
-    void addPlugin(SampleUniquePtr<nvinfer1::INetworkDefinition> &network);
+    void addPlugin(SampleUniquePtr<nvinfer1::INetworkDefinition> &network) override;
 };
 
-}
+} // namespace cheetahinfer
+
 #endif

@@ -15,29 +15,27 @@
 #include "trtcommon/buffers.h"
 #include "trtcommon/common.h"
 #include "trtcommon/logger.h"
+//#include "parserOnnxConfig.h"
 
-#include "utils/misc.h"
+#include "timer.h"
 #include "task/classifier.h"
+
+
+const std::string gSampleName = "TensorRT.classifer";
+
 
 samplesCommon::OnnxSampleParams initializeSampleParams(const samplesCommon::Args& args)
 {
-    std::string savedir = "models";
-    std::string model_name = "resnet18-v1-7";
     samplesCommon::OnnxSampleParams params;
-    params.onnx_fp = savedir + "/" + model_name + ".onnx";
-    params.engine_fp = savedir + "/" + model_name + ".engine";
-    params.is_serialize = true;
-    params.is_from_onnx = true;
-    params.max_workspace_size = 16_MiB; // defined in trtcommon/common.h
-    params.batch_size = 1;
+    params.onnx_fp = "models/resnet18-v1-7.onnx";
+	//params.inputTensorNames.push_back("Input3");
+    params.input_tensor_names.push_back("data");
+    params.batch_size = 16;
+	//params.outputTensorNames.push_back("Plus214_Output_0");
+    params.output_tensor_names.push_back("resnetv15_dense0_fwd");
     params.dla_core = args.useDLACore;
     params.int8 = args.runInInt8;
     params.fp16 = args.runInFp16;
-    auto &tdims = params.input_dims;
-    tdims.d[0] = 3;
-    tdims.d[1] = 299;
-    tdims.d[2] = 299;
-    tdims.nbDims = 3;
 
     return params;
 }
@@ -56,7 +54,6 @@ void printHelpInfo()
 
 int main(int argc, char** argv)
 {
-    setReportableSeverity(Logger::Severity::kINFO);
     samplesCommon::Args args;
     bool argsOK = samplesCommon::parseArgs(args, argc, argv);
     if (!argsOK)
@@ -71,25 +68,31 @@ int main(int argc, char** argv)
         return EXIT_SUCCESS;
     }
 
-    cheetahinfer::Classifier task(initializeSampleParams(args));
+    auto sampleTest = gLogger.defineTest(gSampleName, argc, argv);
 
-    gLogInfo << "Building and running a GPU inference engine" << std::endl;
+    gLogger.reportTestStart(sampleTest);
+
+    cheetahinfer::Classifier classifer(initializeSampleParams(args));
+
+    gLogInfo << "Building and running a GPU inference engine for Onnx MNIST" << std::endl;
 
 	cheetahinfer::Timer timer;
-    task.build();
-	for(int i = 0; i < 1; i++)
+    if (!classifer.build())
+    {
+        return gLogger.reportFail(sampleTest);
+    }
+	for(int i=0; i<1; i++)
 	{
-		gLogWarning << "---------------------------------------" <<std::endl;
-		timer.start("main-infer");
-		if (!task.infer("data/cat.jpg"))
+		timer.start();
+		if (!classifer.infer())
 		{
+			//return gLogger.reportFail(sampleTest);
 		}
-        else
-        {
-            task.verifyOutput();
-        }
-		timer.stop("main-infer");
+
+		timer.stop();
+		std::cout<<"infer#Elapse "<<timer.timeSpan()<<"s"<<std::endl;
+		std::cout<<"-------------"<<std::endl;
 	}
-    return 0;
+    return gLogger.reportPass(sampleTest);
 }
 

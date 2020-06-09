@@ -1,0 +1,16 @@
+&&&& RUNNING TensorRT.retinanet # ./build/main
+[05/05/2020-09:54:35] [I] Building and running a GPU inference engine for RetinaNet
+[05/05/2020-09:54:38] [05/05/2020-09:54:38] debug 
+Elapse of readImage-imread is 37.1718ms
+orig_image is continuous: 1; orig_image_ is continuous: 1
+Elapse of readImage-resize is 0.043806ms
+Elapse of readImage-convertTo is 0.000101ms
+Elapse of readImage-norm is 64.9445ms
+Elapse of inferCommon-processInput is 102.3ms
+Elapse of inferCommon-H2D is 8.88177ms
+Elapse of inferCommon-enqueue is 46.6536ms
+Output:
+Found box {1023, 326, 1093, 391} with score 0.995226 and class 0
+[05/05/2020-09:54:38] [I] 
+Elapse of main-infer is 173.98ms
+&&&& PASSED TensorRT.retinanet # ./build/main

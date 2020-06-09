@@ -1,5 +1,6 @@
-#ifndef CHEETAH_INFER_BASE_TASK_H
-#define CHEETAH_INFER_BASE_TASK_H
+//#pragma once
+#ifndef CHEETAH_INFER_TASK_BASE_TASK_H
+#define CHEETAH_INFER_TASK_BASE_TASK_H
 
 #include <vector>
 
@@ -17,44 +18,41 @@ class BaseTask
 
 public:
     BaseTask(const samplesCommon::OnnxSampleParams& params);
-
-    void build(bool is_from_onnx);
-
+    void build();
     bool inferCommon(const std::string fp, samplesCommon::BufferManager& buffers);
-
-    bool verifyOutput(const samplesCommon::BufferManager& buffers);
+    virtual bool infer(std::string img_fp);
+    virtual bool verifyOutput();
 
 protected:
-    samplesCommon::OnnxSampleParams params_; //!< The parameters for the sample.
-
-    nvinfer1::Dims input_dims_;  //!< The dimensions of the input to the network.
-    std::vector<nvinfer1::Dims> output_dims_vec_; //!< The dimensions of the output to the network.
-    int mNumber{0};             //!< The number to classify
+    // variables
+    samplesCommon::OnnxSampleParams params_;
+    nvinfer1::Dims input_dims_;
+    std::vector<nvinfer1::Dims> output_dims_vec_;
     cudaStream_t _stream = nullptr;
+    // do not modify as SampleUniquePtr<nvinfer1::IExecutionContext> engine_,
+    // it will lead to compiling error which is caused by BufferManager defined
+    // in trtcommon/buffers.h
+    std::shared_ptr<nvinfer1::ICudaEngine> engine_;
+    SampleUniquePtr<nvinfer1::IExecutionContext> context_;
+    samplesCommon::BufferManager buffers_;
+    cv::Mat orig_image_; // for debugging
+    float fx_;
+    float fy_;
 
-    std::shared_ptr<nvinfer1::ICudaEngine> engine_; //!< The TensorRT engine used to run the network
-    //SampleUniquePtr<nvinfer1::ICudaEngine> engine_;
-
-    cv::Mat orig_image_;
-
+    // functions
     bool constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& builder,
         SampleUniquePtr<nvinfer1::INetworkDefinition>& network, SampleUniquePtr<nvinfer1::IBuilderConfig>& config,
         SampleUniquePtr<nvonnxparser::IParser>& parser);
-
-	bool readImage(const std::string fp, float* host_data);
-
-    bool processInput(const std::string fp, const samplesCommon::BufferManager& buffers);
-
+	void readImage(const std::string fp, float* host_data);
+    void processInput(const std::string fp, const samplesCommon::BufferManager& buffers);
     void getBindingDimensions();
-
     void buildFromOnnx();
-
-    void buildFromPlan();
-
-    void addPlugin(SampleUniquePtr<nvinfer1::INetworkDefinition> &network);
-
+    void buildFromEngine();
     void serializeEngine();
+    virtual void addPlugin(SampleUniquePtr<nvinfer1::INetworkDefinition> &network);
+
 };
 
-}
+} // namespace cheetahinfer
+
 #endif
