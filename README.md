@@ -1,6 +1,12 @@
 ## Introduction
 CheetahInfer is a pure C++ inference SDK based on TensorRT, which supports fast inference of classifier and object detector.
 
+## Features
+
+- Efficient
+  
+  With the help of TensorRT's optimization to CNNs and the pure C++ implmentation of preprocessing and postprocessing, CheetahInfer is really efficent. If you are interested in flexibleness, you can refer to [FlexInfer](https://github.com/Media-Smart/flexinfer).
+
 ## Prerequisites
 CheetahInfer has several dependencies:
 - OpenCV
