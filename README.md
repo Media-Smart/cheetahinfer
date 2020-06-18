@@ -14,7 +14,8 @@ CheetahInfer has several dependencies:
   - tested on version 7.6.5
 - GCC
   - tested on version 5.4.0
-After the installation of above dependencies, we need modify the `TENSORRT_INSTALL_DIR` and `OPENCV_INSTALL_DIR` in file `Makefile.config` accordingly.
+
+After the installation of above dependencies, we need modify the `TENSORRT_INSTALL_DIR` and `OPENCV_INSTALL_DIR` in file `Makefile.config` and the environment variable `LD_LIBRARY_PATH` accordingly.
 
 ## Preparation for model and data
 - Prepare the ONNX file
