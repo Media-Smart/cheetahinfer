@@ -21,7 +21,11 @@ CheetahInfer has several dependencies:
 - GCC
   - tested on version 5.4.0
 
-After the installation of above dependencies, we need modify the `TENSORRT_INSTALL_DIR` and `OPENCV_INSTALL_DIR` in file `Makefile.config` and the environment variable `LD_LIBRARY_PATH` and `PATH` accordingly.
+After the installation of above dependencies, we need modify the `TENSORRT_INSTALL_DIR` and `OPENCV_INSTALL_DIR` in file `Makefile.config` and the environment variable `LD_LIBRARY_PATH` and `PATH` in `.bashrc` file accordingly like the following.
+```
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/home/yichaoxiong/opt/lib/tensorrt:/home/yichaoxiong/opt/lib/opencv"
+export PATH="${PATH}:/usr/local/cuda-10.2/bin"
+```
 
 ## Preparation for model and data
 - Prepare the ONNX file
