@@ -1,50 +1,17 @@
 /*
- * Copyright 1993-2019 NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
  *
- * NOTICE TO LICENSEE:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This source code and/or documentation ("Licensed Deliverables") are
- * subject to NVIDIA intellectual property rights under U.S. and
- * international Copyright laws.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * These Licensed Deliverables contained herein is PROPRIETARY and
- * CONFIDENTIAL to NVIDIA and is being provided under the terms and
- * conditions of a form of NVIDIA software license agreement by and
- * between NVIDIA and Licensee ("License Agreement") or electronically
- * accepted by Licensee.  Notwithstanding any terms or conditions to
- * the contrary in the License Agreement, reproduction or disclosure
- * of the Licensed Deliverables to any third party without the express
- * written consent of NVIDIA is prohibited.
- *
- * NOTWITHSTANDING ANY TERMS OR CONDITIONS TO THE CONTRARY IN THE
- * LICENSE AGREEMENT, NVIDIA MAKES NO REPRESENTATION ABOUT THE
- * SUITABILITY OF THESE LICENSED DELIVERABLES FOR ANY PURPOSE.  IT IS
- * PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED WARRANTY OF ANY KIND.
- * NVIDIA DISCLAIMS ALL WARRANTIES WITH REGARD TO THESE LICENSED
- * DELIVERABLES, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY,
- * NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE.
- * NOTWITHSTANDING ANY TERMS OR CONDITIONS TO THE CONTRARY IN THE
- * LICENSE AGREEMENT, IN NO EVENT SHALL NVIDIA BE LIABLE FOR ANY
- * SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, OR ANY
- * DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
- * WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
- * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
- * OF THESE LICENSED DELIVERABLES.
- *
- * U.S. Government End Users.  These Licensed Deliverables are a
- * "commercial item" as that term is defined at 48 C.F.R. 2.101 (OCT
- * 1995), consisting of "commercial computer software" and "commercial
- * computer software documentation" as such terms are used in 48
- * C.F.R. 12.212 (SEPT 1995) and is provided to the U.S. Government
- * only as a commercial end item.  Consistent with 48 C.F.R.12.212 and
- * 48 C.F.R. 227.7202-1 through 227.7202-4 (JUNE 1995), all
- * U.S. Government End Users acquire the Licensed Deliverables with
- * only those rights set forth herein.
- *
- * Any use of the Licensed Deliverables in individual and commercial
- * software must include, in the user documentation and internal
- * comments to the code, the above Disclaimer and U.S. Government End
- * Users Notice.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #ifndef TENSORRT_COMMON_H
@@ -60,11 +27,15 @@
 #include <dlfcn.h>
 #endif
 
+#include "NvInfer.h"
+#include "NvInferPlugin.h"
+#include "logger.h"
 #include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <cuda_runtime_api.h>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -79,12 +50,6 @@
 #include <utility>
 #include <vector>
 
-#include <NvInfer.h>
-#include <NvInferPlugin.h>
-#include <cuda_runtime_api.h>
-
-#include "logger.h"
-
 //using namespace nvinfer1;
 //using namespace plugin;
 
@@ -98,36 +63,46 @@
 #define ENABLE_DLA_API 1
 #endif
 
-#define CHECK(status)                                          \
-    do                                                         \
-    {                                                          \
-        auto ret = (status);                                   \
-        if (ret != 0)                                          \
-        {                                                      \
-            std::cerr << "Cuda failure: " << ret << std::endl; \
-            abort();                                           \
-        }                                                      \
+#define CHECK(status)                                           \
+    do                                                          \
+    {                                                           \
+        auto ret = (status);                                    \
+        if (ret != 0)                                           \
+        {                                                       \
+            sample::gLogError << "Cuda failure: " << ret << std::endl;  \
+            abort();                                            \
+        }                                                       \
     } while (0)
 
-#define CHECK_RETURN_W_MSG(status, val, errMsg)                \
-    do                                                         \
-    {                                                          \
-        if (!(status))                                         \
-        {                                                      \
-            std::cerr << errMsg << " Error in " << __FILE__    \
-                << ", function " << FN_NAME << "(), line "     \
-                << __LINE__ << std::endl;                      \
-            return val;                                        \
-        }                                                      \
+#define CHECK_RETURN_W_MSG(status, val, errMsg)                                                                        \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(status))                                                                                                 \
+        {                                                                                                              \
+            sample::gLogError << errMsg << " Error in " << __FILE__ << ", function " << FN_NAME << "(), line " << __LINE__     \
+                      << std::endl;                                                                                    \
+            return val;                                                                                                \
+        }                                                                                                              \
     } while (0)
 
-#define CHECK_RETURN(status, val)                              \
-    CHECK_RETURN_W_MSG(status, val, "")
+#define ASSERT(condition)                                                   \
+    do                                                                      \
+    {                                                                       \
+        if (!(condition))                                                   \
+        {                                                                   \
+            sample::gLogError << "Assertion failure: " << #condition << std::endl;  \
+            abort();                                                        \
+        }                                                                   \
+    } while (0)
+
+
+#define CHECK_RETURN(status, val) CHECK_RETURN_W_MSG(status, val, "")
 
 #define OBJ_GUARD(A) std::unique_ptr<A, void (*)(A * t)>
 
 template <typename T, typename T_>
-OBJ_GUARD(T) makeObjGuard(T_* t)
+OBJ_GUARD(T)
+makeObjGuard(T_* t)
 {
     CHECK(!(std::is_base_of<T, T_>::value || std::is_same<T, T_>::value));
     auto deleter = [](T* t) { t->destroy(); };
@@ -138,14 +113,29 @@ constexpr long double operator"" _GiB(long double val)
 {
     return val * (1 << 30);
 }
-constexpr long double operator"" _MiB(long double val) { return val * (1 << 20); }
-constexpr long double operator"" _KiB(long double val) { return val * (1 << 10); }
+constexpr long double operator"" _MiB(long double val)
+{
+    return val * (1 << 20);
+}
+constexpr long double operator"" _KiB(long double val)
+{
+    return val * (1 << 10);
+}
 
 // These is necessary if we want to be able to write 1_GiB instead of 1.0_GiB.
 // Since the return type is signed, -1_GiB will work as expected.
-constexpr long long int operator"" _GiB(long long unsigned int val) { return val * (1 << 30); }
-constexpr long long int operator"" _MiB(long long unsigned int val) { return val * (1 << 20); }
-constexpr long long int operator"" _KiB(long long unsigned int val) { return val * (1 << 10); }
+constexpr long long int operator"" _GiB(long long unsigned int val)
+{
+    return val * (1 << 30);
+}
+constexpr long long int operator"" _MiB(long long unsigned int val)
+{
+    return val * (1 << 20);
+}
+constexpr long long int operator"" _KiB(long long unsigned int val)
+{
+    return val * (1 << 10);
+}
 
 struct SimpleProfiler : public nvinfer1::IProfiler
 {
@@ -159,16 +149,13 @@ struct SimpleProfiler : public nvinfer1::IProfiler
     {
         mProfile[layerName].count++;
         mProfile[layerName].time += ms;
-        if (std::find(mLayerNames.begin(), mLayerNames.end(), layerName)
-            == mLayerNames.end())
+        if (std::find(mLayerNames.begin(), mLayerNames.end(), layerName) == mLayerNames.end())
         {
             mLayerNames.push_back(layerName);
         }
     }
 
-    SimpleProfiler(
-        const char* name,
-        const std::vector<SimpleProfiler>& srcProfilers = std::vector<SimpleProfiler>())
+    SimpleProfiler(const char* name, const std::vector<SimpleProfiler>& srcProfilers = std::vector<SimpleProfiler>())
         : mName(name)
     {
         for (const auto& srcProfiler : srcProfilers)
@@ -277,7 +264,7 @@ inline std::string locateFile(const std::string& filepathSuffix, const std::vect
     if (filepath.empty())
     {
         std::string directoryList = std::accumulate(directories.begin() + 1, directories.end(), directories.front(),
-                                                    [](const std::string& a, const std::string& b) { return a + "\n\t" + b; });
+            [](const std::string& a, const std::string& b) { return a + "\n\t" + b; });
         std::cout << "Could not find " << filepathSuffix << " in data directories:\n\t" << directoryList << std::endl;
         std::cout << "&&&& FAILED" << std::endl;
         exit(EXIT_FAILURE);
@@ -297,16 +284,39 @@ inline void readPGMFile(const std::string& fileName, uint8_t* buffer, int inH, i
 
 namespace samplesCommon
 {
+
 using namespace nvinfer1;
 using namespace plugin;
+
+// Swaps endianness of an integral type.
+template <typename T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
+inline T swapEndianness(const T& value)
+{
+    uint8_t bytes[sizeof(T)];
+    for (int i = 0; i < static_cast<int>(sizeof(T)); ++i)
+    {
+        bytes[sizeof(T) - 1 - i] = *(reinterpret_cast<const uint8_t*>(&value) + i);
+    }
+    return *reinterpret_cast<T*>(bytes);
+}
 
 class HostMemory : public IHostMemory
 {
 public:
     HostMemory() = delete;
-    void* data() const noexcept override { return mData; }
-    std::size_t size() const noexcept override { return mSize; }
-    DataType type() const noexcept override { return mType; }
+    void* data() const noexcept override
+    {
+        return mData;
+    }
+    std::size_t size() const noexcept override
+    {
+        return mSize;
+    }
+    DataType type() const noexcept override
+    {
+        return mType;
+    }
+
 protected:
     HostMemory(std::size_t size, DataType type)
         : mSize(size)
@@ -316,7 +326,6 @@ protected:
     void* mData;
     std::size_t mSize;
     DataType mType;
-
 };
 
 template <typename ElemType, DataType dataType>
@@ -333,24 +342,15 @@ public:
         delete[](ElemType*) mData;
         delete this;
     }
-    ElemType* raw() noexcept { return static_cast<ElemType*>(data()); }
+    ElemType* raw() noexcept
+    {
+        return static_cast<ElemType*>(data());
+    }
 };
 
 using FloatMemory = TypedHostMemory<float, DataType::kFLOAT>;
 using HalfMemory = TypedHostMemory<uint16_t, DataType::kHALF>;
 using ByteMemory = TypedHostMemory<uint8_t, DataType::kINT8>;
-
-// Swaps endianness of an integral type.
-template <typename T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
-inline T swapEndianness(const T& value)
-{
-    uint8_t bytes[sizeof(T)];
-    for (int i = 0; i < static_cast<int>(sizeof(T)); ++i)
-    {
-        bytes[sizeof(T) - 1 - i] = *(reinterpret_cast<const uint8_t*>(&value) + i);
-    }
-    return *reinterpret_cast<T*>(bytes);
-}
 
 inline void* safeCudaMalloc(size_t memSize)
 {
@@ -398,15 +398,11 @@ inline std::vector<size_t> argsort(Iter begin, Iter end, bool reverse = false)
     std::iota(inds.begin(), inds.end(), 0);
     if (reverse)
     {
-        std::sort(inds.begin(), inds.end(), [&begin](size_t i1, size_t i2) {
-            return begin[i2] < begin[i1];
-        });
+        std::sort(inds.begin(), inds.end(), [&begin](size_t i1, size_t i2) { return begin[i2] < begin[i1]; });
     }
     else
     {
-        std::sort(inds.begin(), inds.end(), [&begin](size_t i1, size_t i2) {
-            return begin[i1] < begin[i2];
-        });
+        std::sort(inds.begin(), inds.end(), [&begin](size_t i1, size_t i2) { return begin[i1] < begin[i2]; });
     }
     return inds;
 }
@@ -431,7 +427,8 @@ inline bool readReferenceFile(const std::string& fileName, std::vector<std::stri
 }
 
 template <typename result_vector_t>
-inline std::vector<std::string> classify(const std::vector<std::string>& refVector, const result_vector_t& output, const size_t topK)
+inline std::vector<std::string> classify(
+    const std::vector<std::string>& refVector, const result_vector_t& output, const size_t topK)
 {
     auto inds = samplesCommon::argsort(output.cbegin(), output.cend(), true);
     std::vector<std::string> result;
@@ -442,7 +439,7 @@ inline std::vector<std::string> classify(const std::vector<std::string>& refVect
     return result;
 }
 
-//...LG returns top K indices, not values.
+// Returns top K indices, not values.
 template <typename T>
 inline std::vector<size_t> topK(const std::vector<T> inp, const size_t k)
 {
@@ -487,11 +484,8 @@ inline bool writeASCIIFile(const std::string& fileName, const std::vector<T>& in
 
 inline void print_version()
 {
-    std::cout << "  TensorRT version: "
-              << NV_TENSORRT_MAJOR << "."
-              << NV_TENSORRT_MINOR << "."
-              << NV_TENSORRT_PATCH << "."
-              << NV_TENSORRT_BUILD << std::endl;
+    std::cout << "  TensorRT version: " << NV_TENSORRT_MAJOR << "." << NV_TENSORRT_MINOR << "." << NV_TENSORRT_PATCH
+              << "." << NV_TENSORRT_BUILD << std::endl;
 }
 
 inline std::string getFileType(const std::string& filepath)
@@ -537,7 +531,7 @@ inline void setAllTensorScales(INetworkDefinition* network, float inScales = 2.0
             // Optional inputs are nullptr here and are from RNN layers.
             if (input != nullptr && !input->dynamicRangeIsSet())
             {
-                input->setDynamicRange(-inScales, inScales);
+                ASSERT(input->setDynamicRange(-inScales, inScales));
             }
         }
     }
@@ -557,11 +551,11 @@ inline void setAllTensorScales(INetworkDefinition* network, float inScales = 2.0
                 // Pooling must have the same input and output scales.
                 if (layer->getType() == LayerType::kPOOLING)
                 {
-                    output->setDynamicRange(-inScales, inScales);
+                    ASSERT(output->setDynamicRange(-inScales, inScales));
                 }
                 else
                 {
-                    output->setDynamicRange(-outScales, outScales);
+                    ASSERT(output->setDynamicRange(-outScales, outScales));
                 }
             }
         }
@@ -573,7 +567,9 @@ inline void setDummyInt8Scales(const IBuilderConfig* c, INetworkDefinition* n)
     // Set dummy tensor scales if Int8 mode is requested.
     if (c->getFlag(BuilderFlag::kINT8))
     {
-        gLogWarning << "Int8 calibrator not provided. Generating dummy per tensor scales. Int8 accuracy is not guaranteed." << std::endl;
+        sample::gLogWarning
+            << "Int8 calibrator not provided. Generating dummy per tensor scales. Int8 accuracy is not guaranteed."
+            << std::endl;
         setAllTensorScales(n);
     }
 }
@@ -584,7 +580,8 @@ inline void enableDLA(IBuilder* builder, IBuilderConfig* config, int useDLACore,
     {
         if (builder->getNbDLACores() == 0)
         {
-            std::cerr << "Trying to use DLA core " << useDLACore << " on a platform that doesn't have any DLA cores" << std::endl;
+            std::cerr << "Trying to use DLA core " << useDLACore << " on a platform that doesn't have any DLA cores"
+                      << std::endl;
             assert("Error: use DLA core on a platfrom that doesn't have any DLA cores" && false);
         }
         if (allowGPUFallback)
@@ -622,6 +619,7 @@ inline unsigned int getElementSize(nvinfer1::DataType t)
     case nvinfer1::DataType::kINT32: return 4;
     case nvinfer1::DataType::kFLOAT: return 4;
     case nvinfer1::DataType::kHALF: return 2;
+    case nvinfer1::DataType::kBOOL:
     case nvinfer1::DataType::kINT8: return 1;
     }
     throw std::runtime_error("Invalid DataType.");
@@ -640,6 +638,7 @@ inline unsigned int elementSize(DataType t)
     case DataType::kINT32:
     case DataType::kFLOAT: return 4;
     case DataType::kHALF: return 2;
+    case DataType::kBOOL:
     case DataType::kINT8: return 1;
     }
     return 0;
@@ -659,6 +658,14 @@ struct PPM
     uint8_t buffer[C * H * W];
 };
 
+// New vPPM(variable sized PPM) class with variable dimensions.
+struct vPPM
+{
+    std::string magic, fileName;
+    int h, w, max;
+    std::vector<uint8_t> buffer;
+};
+
 struct BBox
 {
     float x1, y1, x2, y2;
@@ -673,6 +680,21 @@ inline void readPPMFile(const std::string& filename, samplesCommon::PPM<C, H, W>
     infile >> ppm.magic >> ppm.w >> ppm.h >> ppm.max;
     infile.seekg(1, infile.cur);
     infile.read(reinterpret_cast<char*>(ppm.buffer), ppm.w * ppm.h * 3);
+}
+
+inline void readPPMFile(const std::string& filename, vPPM& ppm, std::vector<std::string>& input_dir)
+{
+    ppm.fileName = filename;
+    std::ifstream infile(locateFile(filename, input_dir), std::ifstream::binary);
+    infile >> ppm.magic >> ppm.w >> ppm.h >> ppm.max;
+    infile.seekg(1, infile.cur);
+
+    for (int i = 0; i < ppm.w * ppm.h * 3; ++i)
+    {
+        ppm.buffer.push_back(0);
+    }
+
+    infile.read(reinterpret_cast<char*>(&ppm.buffer[0]), ppm.w * ppm.h * 3);
 }
 
 template <int C, int H, int W>
@@ -714,15 +736,67 @@ inline void writePPMFileWithBBox(const std::string& filename, PPM<C, H, W>& ppm,
     outfile.write(reinterpret_cast<char*>(ppm.buffer), ppm.w * ppm.h * 3);
 }
 
+inline void writePPMFileWithBBox(const std::string& filename, vPPM ppm, std::vector<BBox>& dets)
+{
+    std::ofstream outfile("./" + filename, std::ofstream::binary);
+    assert(!outfile.fail());
+    outfile << "P6"
+            << "\n"
+            << ppm.w << " " << ppm.h << "\n"
+            << ppm.max << "\n";
+    auto round = [](float x) -> int { return int(std::floor(x + 0.5f)); };
+
+    for (auto bbox : dets)
+    {
+        for (int x = int(bbox.x1); x < int(bbox.x2); ++x)
+        {
+            // bbox top border
+            ppm.buffer[(round(bbox.y1) * ppm.w + x) * 3] = 255;
+            ppm.buffer[(round(bbox.y1) * ppm.w + x) * 3 + 1] = 0;
+            ppm.buffer[(round(bbox.y1) * ppm.w + x) * 3 + 2] = 0;
+            // bbox bottom border
+            ppm.buffer[(round(bbox.y2) * ppm.w + x) * 3] = 255;
+            ppm.buffer[(round(bbox.y2) * ppm.w + x) * 3 + 1] = 0;
+            ppm.buffer[(round(bbox.y2) * ppm.w + x) * 3 + 2] = 0;
+        }
+
+        for (int y = int(bbox.y1); y < int(bbox.y2); ++y)
+        {
+            // bbox left border
+            ppm.buffer[(y * ppm.w + round(bbox.x1)) * 3] = 255;
+            ppm.buffer[(y * ppm.w + round(bbox.x1)) * 3 + 1] = 0;
+            ppm.buffer[(y * ppm.w + round(bbox.x1)) * 3 + 2] = 0;
+            // bbox right border
+            ppm.buffer[(y * ppm.w + round(bbox.x2)) * 3] = 255;
+            ppm.buffer[(y * ppm.w + round(bbox.x2)) * 3 + 1] = 0;
+            ppm.buffer[(y * ppm.w + round(bbox.x2)) * 3 + 2] = 0;
+        }
+    }
+
+    outfile.write(reinterpret_cast<char*>(&ppm.buffer[0]), ppm.w * ppm.h * 3);
+}
+
 class TimerBase
 {
 public:
     virtual void start() {}
     virtual void stop() {}
-    float microseconds() const noexcept { return mMs * 1000.f; }
-    float milliseconds() const noexcept { return mMs; }
-    float seconds() const noexcept { return mMs / 1000.f; }
-    void reset() noexcept { mMs = 0.f; }
+    float microseconds() const noexcept
+    {
+        return mMs * 1000.f;
+    }
+    float milliseconds() const noexcept
+    {
+        return mMs;
+    }
+    float seconds() const noexcept
+    {
+        return mMs / 1000.f;
+    }
+    void reset() noexcept
+    {
+        mMs = 0.f;
+    }
 
 protected:
     float mMs{0.0f};
@@ -742,7 +816,10 @@ public:
         CHECK(cudaEventDestroy(mStart));
         CHECK(cudaEventDestroy(mStop));
     }
-    void start() { CHECK(cudaEventRecord(mStart, mStream)); }
+    void start()
+    {
+        CHECK(cudaEventRecord(mStart, mStream));
+    }
     void stop()
     {
         CHECK(cudaEventRecord(mStop, mStream));
@@ -763,7 +840,10 @@ class CpuTimer : public TimerBase
 public:
     using clock_type = Clock;
 
-    void start() { mStart = Clock::now(); }
+    void start()
+    {
+        mStart = Clock::now();
+    }
     void stop()
     {
         mStop = Clock::now();
@@ -821,9 +901,9 @@ inline void loadLibrary(const std::string& path)
     if (handle == nullptr)
     {
 #ifdef _MSC_VER
-        gLogError << "Could not load plugin library: " << path << std::endl;
+        sample::gLogError << "Could not load plugin library: " << path << std::endl;
 #else
-        gLogError << "Could not load plugin library: " << path << ", due to: " << dlerror() << std::endl;
+        sample::gLogError << "Could not load plugin library: " << path << ", due to: " << dlerror() << std::endl;
 #endif
     }
 }
@@ -835,7 +915,7 @@ inline std::ostream& operator<<(std::ostream& os, const nvinfer1::Dims& dims)
     os << "(";
     for (int i = 0; i < dims.nbDims; ++i)
     {
-        os  << (i ? ", " : "") << dims.d[i];
+        os << (i ? ", " : "") << dims.d[i];
     }
     return os << ")";
 }

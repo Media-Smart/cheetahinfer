@@ -12,7 +12,7 @@ void check(bool status, std::string filename, int lineno, std::string msg)
 {
     if (!status)
     {
-        gLogError << filename << " of line " << lineno << ": " << msg << std::endl;
+        sample::gLogError << filename << " of line " << lineno << ": " << msg << std::endl;
         exit(0);
     }
 }

@@ -1,65 +1,29 @@
 /*
- * Copyright 1993-2019 NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
  *
- * NOTICE TO LICENSEE:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This source code and/or documentation ("Licensed Deliverables") are
- * subject to NVIDIA intellectual property rights under U.S. and
- * international Copyright laws.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * These Licensed Deliverables contained herein is PROPRIETARY and
- * CONFIDENTIAL to NVIDIA and is being provided under the terms and
- * conditions of a form of NVIDIA software license agreement by and
- * between NVIDIA and Licensee ("License Agreement") or electronically
- * accepted by Licensee.  Notwithstanding any terms or conditions to
- * the contrary in the License Agreement, reproduction or disclosure
- * of the Licensed Deliverables to any third party without the express
- * written consent of NVIDIA is prohibited.
- *
- * NOTWITHSTANDING ANY TERMS OR CONDITIONS TO THE CONTRARY IN THE
- * LICENSE AGREEMENT, NVIDIA MAKES NO REPRESENTATION ABOUT THE
- * SUITABILITY OF THESE LICENSED DELIVERABLES FOR ANY PURPOSE.  IT IS
- * PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED WARRANTY OF ANY KIND.
- * NVIDIA DISCLAIMS ALL WARRANTIES WITH REGARD TO THESE LICENSED
- * DELIVERABLES, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY,
- * NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE.
- * NOTWITHSTANDING ANY TERMS OR CONDITIONS TO THE CONTRARY IN THE
- * LICENSE AGREEMENT, IN NO EVENT SHALL NVIDIA BE LIABLE FOR ANY
- * SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, OR ANY
- * DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
- * WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
- * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
- * OF THESE LICENSED DELIVERABLES.
- *
- * U.S. Government End Users.  These Licensed Deliverables are a
- * "commercial item" as that term is defined at 48 C.F.R. 2.101 (OCT
- * 1995), consisting of "commercial computer software" and "commercial
- * computer software documentation" as such terms are used in 48
- * C.F.R. 12.212 (SEPT 1995) and is provided to the U.S. Government
- * only as a commercial end item.  Consistent with 48 C.F.R.12.212 and
- * 48 C.F.R. 227.7202-1 through 227.7202-4 (JUNE 1995), all
- * U.S. Government End Users acquire the Licensed Deliverables with
- * only those rights set forth herein.
- *
- * Any use of the Licensed Deliverables in individual and commercial
- * software must include, in the user documentation and internal
- * comments to the code, the above Disclaimer and U.S. Government End
- * Users Notice.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-
 #ifndef TENSORRT_ARGS_PARSER_H
 #define TENSORRT_ARGS_PARSER_H
 
 #include <string>
 #include <vector>
-#include <NvInfer.h>
 #ifdef _MSC_VER
 #include "..\common\windows\getopt.h"
 #else
 #include <getopt.h>
 #endif
 #include <iostream>
-
 
 namespace samplesCommon
 {
@@ -68,16 +32,13 @@ namespace samplesCommon
 //! \brief The SampleParams structure groups the basic parameters required by
 //!        all sample networks.
 //!
-struct SampleParams
+struct SampleParams // modified by yichaoxiong
 {
     int batch_size{1};                     //!< Number of inputs in a batch
     int dla_core{-1};                   //!< Specify the DLA core to run network on.
     bool int8{false};                  //!< Allow runnning the network in Int8 mode.
     bool fp16{false};                  //!< Allow running the network in FP16 mode.
     std::string engine_fp; //!< Filename of ONNX file of a network
-    std::vector<std::string> data_dirs; //!< Directory paths where sample data files are stored
-    std::vector<std::string> input_tensor_names;
-    std::vector<std::string> output_tensor_names;
 
     nvinfer1::Dims input_dims;
 };
@@ -93,12 +54,11 @@ struct CaffeSampleParams : public SampleParams
     std::string meanFileName;     //!< Filename of mean file of a network
 };
 
-
 //!
 //! \brief The OnnxSampleParams structure groups the additional parameters required by
 //!         networks that use ONNX
 //!
-struct OnnxSampleParams : public SampleParams
+struct OnnxSampleParams : public SampleParams // modified by yichaoxiong
 {
     std::string onnx_fp; //!< Filename of ONNX file of a network
     bool is_from_onnx;
@@ -124,7 +84,12 @@ struct Args
     bool runInFp16{false};
     bool help{false};
     int useDLACore{-1};
-    std::string imgfp;
+    int batch{1};
+    std::vector<std::string> dataDirs;
+    std::string saveEngine;
+    std::string loadEngine;
+    bool useILoop{false};
+    std::string imgfp; //modified by yichaoxiong 
 };
 
 //!
@@ -139,13 +104,10 @@ inline bool parseArgs(Args& args, int argc, char* argv[])
     while (1)
     {
         int arg;
-        static struct option long_options[] = {
-            {"help", no_argument, 0, 'h'},
-            {"imgfp", required_argument, 0, 'm'},
-            {"int8", no_argument, 0, 'i'},
-            {"fp16", no_argument, 0, 'f'},
-            {"useDLACore", required_argument, 0, 'u'},
-            {nullptr, 0, nullptr, 0}};
+        static struct option long_options[] = {{"help", no_argument, 0, 'h'}, {"imgfp", required_argument, 0, 'm'},
+            {"int8", no_argument, 0, 'i'}, {"fp16", no_argument, 0, 'f'}, {"useILoop", no_argument, 0, 'l'},
+            {"saveEngine", required_argument, 0, 's'}, {"loadEngine", no_argument, 0, 'o'},
+            {"useDLACore", required_argument, 0, 'u'}, {"batch", required_argument, 0, 'b'}, {nullptr, 0, nullptr, 0}};
         int option_index = 0;
         arg = getopt_long(argc, argv, "hd:iu", long_options, &option_index);
         if (arg == -1)
@@ -155,9 +117,7 @@ inline bool parseArgs(Args& args, int argc, char* argv[])
 
         switch (arg)
         {
-        case 'h':
-            args.help = true;
-            return true;
+        case 'h': args.help = true; return true;
         case 'm':
             if (optarg)
             {
@@ -165,24 +125,38 @@ inline bool parseArgs(Args& args, int argc, char* argv[])
             }
             else
             {
-                std::cerr << "ERROR: --datadir requires option argument" << std::endl;
+                std::cerr << "ERROR: --imgfp requires option argument" << std::endl;
                 return false;
             }
             break;
-        case 'i':
-            args.runInInt8 = true;
+        case 's':
+            if (optarg)
+            {
+                args.saveEngine = optarg;
+            }
             break;
-        case 'f':
-            args.runInFp16 = true;
+        case 'o':
+            if (optarg)
+            {
+                args.loadEngine = optarg;
+            }
             break;
+        case 'i': args.runInInt8 = true; break;
+        case 'f': args.runInFp16 = true; break;
+        case 'l': args.useILoop = true; break;
         case 'u':
             if (optarg)
             {
                 args.useDLACore = std::stoi(optarg);
             }
             break;
-        default:
-            return false;
+        case 'b':
+            if (optarg)
+            {
+                args.batch = std::stoi(optarg);
+            }
+            break;
+        default: return false;
         }
     }
     return true;

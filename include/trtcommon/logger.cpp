@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "trtcommon/logger.h"
-#include "trtcommon/logging.h"
+#include "logger.h"
+#include "logging.h"
 
 namespace sample
 {

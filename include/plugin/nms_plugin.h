@@ -29,13 +29,15 @@
 
 #include "nms.h"
 
-using namespace nvinfer1;
 
 #define RETINANET_PLUGIN_NAME "RetinaNetNMS"
 #define RETINANET_PLUGIN_VERSION "1"
 #define RETINANET_PLUGIN_NAMESPACE ""
 
 namespace cheetahinfer {
+namespace retinanet_plugin {
+
+using namespace nvinfer1;
 
 class NMSPlugin : public IPluginV2Ext {
   float _nms_thresh;
@@ -205,7 +207,8 @@ public:
 
 REGISTER_TENSORRT_PLUGIN(NMSPluginCreator);
 
-}
+} // namespace retinanet_plugin 
+} // namespace cheetahinfer
 
 #undef RETINANET_PLUGIN_NAME
 #undef RETINANET_PLUGIN_VERSION

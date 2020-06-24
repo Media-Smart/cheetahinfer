@@ -21,23 +21,24 @@
 
 samplesCommon::OnnxSampleParams initializeSampleParams(const samplesCommon::Args& args)
 {
-    std::string savedir = "models";
-    std::string model_name = "resnet18-v1-7";
+    std::string savedir =  "models";
+    std::string model_name = "resnet18"; //-v1-7";
     samplesCommon::OnnxSampleParams params;
     params.onnx_fp = savedir + "/" + model_name + ".onnx";
     params.engine_fp = savedir + "/" + model_name + ".engine";
-    params.is_serialize = true;
+    params.is_serialize = false;
     params.is_from_onnx = true;
     params.max_workspace_size = 16_MiB; // defined in trtcommon/common.h
-    params.batch_size = 1;
+    params.batch_size = 2;
     params.dla_core = args.useDLACore;
     params.int8 = args.runInInt8;
     params.fp16 = args.runInFp16;
     auto &tdims = params.input_dims;
-    tdims.d[0] = 3;
-    tdims.d[1] = 299;
-    tdims.d[2] = 299;
-    tdims.nbDims = 3;
+    tdims.d[0] = params.batch_size;
+    tdims.d[1] = 3;
+    tdims.d[2] = 224;
+    tdims.d[3] = 224;
+    tdims.nbDims = 4;
 
     return params;
 }
@@ -54,12 +55,12 @@ void printHelpInfo()
 
 int main(int argc, char** argv)
 {
-    setReportableSeverity(Logger::Severity::kINFO);
+    sample::setReportableSeverity(sample::Logger::Severity::kINFO);
     samplesCommon::Args args;
     bool argsOK = samplesCommon::parseArgs(args, argc, argv);
     if (!argsOK)
     {
-        gLogError << "Invalid arguments" << std::endl;
+        sample::gLogError << "Invalid arguments" << std::endl;
         printHelpInfo();
         return EXIT_FAILURE;
     }
@@ -71,15 +72,16 @@ int main(int argc, char** argv)
 
     cheetahinfer::Classifier task(initializeSampleParams(args));
 
-    gLogInfo << "Building and running a GPU inference engine" << std::endl;
+    sample::gLogInfo << "Building and running a GPU inference engine" << std::endl;
 
 	cheetahinfer::Timer timer;
     task.build();
 	for(int i = 0; i < 1; i++)
 	{
-		gLogWarning << "---------------------------------------" <<std::endl;
+		sample::gLogWarning << "---------------------------------------" <<std::endl;
 		timer.start("main-infer");
-		if (!task.infer(args.imgfp))
+        std::vector<std::string> fps = {args.imgfp, args.imgfp};
+		if (!task.infer(fps))
 		{
 		}
         else

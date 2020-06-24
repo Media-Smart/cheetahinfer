@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "trtcommon/getOptions.h"
-#include "trtcommon/logger.h"
+#include "getOptions.h"
+#include "logger.h"
 
 #include <algorithm>
 #include <cassert>

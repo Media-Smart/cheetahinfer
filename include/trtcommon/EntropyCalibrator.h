@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,8 @@
 #ifndef ENTROPY_CALIBRATOR_H
 #define ENTROPY_CALIBRATOR_H
 
-#include <NvInfer.h>
-
 #include "BatchStream.h"
+#include "NvInfer.h"
 
 //! \class EntropyCalibratorImpl
 //!
@@ -36,8 +35,8 @@ public:
         , mInputBlobName(inputBlobName)
         , mReadCache(readCache)
     {
-        nvinfer1::Dims imageDims = mStream.getImageDims();
-        mInputCount = samplesCommon::volume(imageDims) * mStream.getBatchSize();
+        nvinfer1::Dims dims = mStream.getDims();
+        mInputCount = samplesCommon::volume(dims);
         CHECK(cudaMalloc(&mDeviceInput, mInputCount * sizeof(float)));
         mStream.reset(firstBatch);
     }
@@ -47,7 +46,10 @@ public:
         CHECK(cudaFree(mDeviceInput));
     }
 
-    int getBatchSize() const { return mStream.getBatchSize(); }
+    int getBatchSize() const
+    {
+        return mStream.getBatchSize();
+    }
 
     bool getBatch(void* bindings[], const char* names[], int nbBindings)
     {
@@ -68,7 +70,8 @@ public:
         input >> std::noskipws;
         if (mReadCache && input.good())
         {
-            std::copy(std::istream_iterator<char>(input), std::istream_iterator<char>(), std::back_inserter(mCalibrationCache));
+            std::copy(std::istream_iterator<char>(input), std::istream_iterator<char>(),
+                std::back_inserter(mCalibrationCache));
         }
         length = mCalibrationCache.size();
         return length ? mCalibrationCache.data() : nullptr;
@@ -105,7 +108,10 @@ public:
     {
     }
 
-    int getBatchSize() const override { return mImpl.getBatchSize(); }
+    int getBatchSize() const override
+    {
+        return mImpl.getBatchSize();
+    }
 
     bool getBatch(void* bindings[], const char* names[], int nbBindings) override
     {

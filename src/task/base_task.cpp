@@ -13,8 +13,6 @@
 #include "trtcommon/argsParser.h"
 #include "trtcommon/buffers.h"
 #include "trtcommon/logger.h"
-#include "plugin/decode_plugin.h"
-#include "plugin/nms_plugin.h"
 #include "task/base_task.h"
 
 namespace cheetahinfer
@@ -31,45 +29,53 @@ void BaseTask::build()
         buildFromEngine();
     }
 
-    getBindingDimensions();
-
     check(nullptr != engine_, __FILE__, __LINE__, "Fail to build an engine");
 
     context_ = SampleUniquePtr<nvinfer1::IExecutionContext>(engine_->createExecutionContext());
+    context_->setOptimizationProfile(0);
+    context_->setBindingDimensions(0, params_.input_dims);
 
-    buffers_.init(engine_, params_.batch_size);
+    getBindingDimensions();
+    buffers_.init(engine_, context_);
 }
 
 void BaseTask::getBindingDimensions()
 {
-    input_dims_ = engine_->getBindingDimensions(0);
-    for (int ii = 1; ii < engine_->getNbBindings(); ii++)
+    for (int ii = 1; ii < context_->getNbBindings(); ii++)
     {
-        auto output_dims = engine_->getBindingDimensions(ii);
+        auto output_dims = context_->getBindingDimensions(ii);
         output_dims_vec_.push_back(output_dims);
     }
 }
 
 void BaseTask::buildFromOnnx()
 {
-    auto builder = SampleUniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
+    auto builder = SampleUniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(sample::gLogger.getTRTLogger()));
     cheetahinfer::check(nullptr != builder, __FILE__, __LINE__, "Fail to create an infer builder");
 
-    auto network = SampleUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetwork());
+    const auto explicitBatch = 1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);     
+    auto network = SampleUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(explicitBatch));
     check(nullptr != network, __FILE__, __LINE__, "Fail to create an network");
 
     auto config = SampleUniquePtr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
     check(nullptr != config, __FILE__, __LINE__, "Fail to create a configure");
 
-    auto parser = SampleUniquePtr<nvonnxparser::IParser>(nvonnxparser::createParser(*network, gLogger.getTRTLogger()));
+    auto parser = SampleUniquePtr<nvonnxparser::IParser>(nvonnxparser::createParser(*network, sample::gLogger.getTRTLogger()));
     check(nullptr != parser, __FILE__, __LINE__, "Fail to create a parser");
 
     auto constructed = constructNetwork(builder, network, config, parser);
     check(true == constructed, __FILE__, __LINE__, "Fail to construct a network");
 
-    network->getInput(0)->setDimensions(params_.input_dims);
-
     addPlugin(network);
+
+    nvinfer1::IOptimizationProfile* profile = builder->createOptimizationProfile();
+    auto input_name = network->getInput(0)->getName();
+    checkOptProfileDims(network->getInput(0)->getDimensions(), params_.input_dims);
+    profile->setDimensions(input_name, nvinfer1::OptProfileSelector::kMIN, params_.input_dims);
+    profile->setDimensions(input_name, nvinfer1::OptProfileSelector::kOPT, params_.input_dims);
+    profile->setDimensions(input_name, nvinfer1::OptProfileSelector::kMAX, params_.input_dims);
+
+    config->addOptimizationProfile(profile);
 
     engine_ = SampleUniquePtr<nvinfer1::ICudaEngine>(builder->buildEngineWithConfig(*network, *config));
 
@@ -79,6 +85,20 @@ void BaseTask::buildFromOnnx()
     }
 }
 
+void BaseTask::checkOptProfileDims(const nvinfer1::Dims& network_dims, const nvinfer1::Dims& setting_dims)
+{
+    check(network_dims.nbDims == setting_dims.nbDims, __FILE__, __LINE__, "Number of dims not consistent");
+    for (int ii = 0; ii < network_dims.nbDims; ii++)
+    {
+        check(setting_dims.d[ii] > 0, __FILE__, __LINE__, "There is dim less then 0 in setting dims");
+        if (network_dims.d[ii] > 0)
+        {
+            check(network_dims.d[ii] == setting_dims.d[ii], __FILE__, __LINE__, "Dim of network dims and setting dims not consistent");
+        }
+    }
+
+}
+
 void BaseTask::addPlugin(SampleUniquePtr<nvinfer1::INetworkDefinition> &network)
 {
 }
@@ -86,7 +106,7 @@ void BaseTask::addPlugin(SampleUniquePtr<nvinfer1::INetworkDefinition> &network)
 void BaseTask::serializeEngine()
 {
     auto serializedModel = SampleUniquePtr<nvinfer1::IHostMemory>(engine_->serialize());
-    gLogInfo << "Serialize to file " << params_.engine_fp << std::endl;
+    sample::gLogInfo << "Serialize to file " << params_.engine_fp << std::endl;
     std::ofstream ofd(params_.engine_fp, std::ios::out | std::ios::binary);
     ofd.write(reinterpret_cast<const char*>(serializedModel->data()), serializedModel->size());
     //ofd.close(); // close file handler will result in a bug
@@ -104,7 +124,7 @@ void BaseTask::buildFromEngine()
     ifd.read(buffer.get(), size);
     ifd.close();
 
-    auto runtime = SampleUniquePtr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(gLogger.getTRTLogger()));
+    auto runtime = SampleUniquePtr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(sample::gLogger.getTRTLogger()));
 
     engine_ = SampleUniquePtr<nvinfer1::ICudaEngine>(runtime->deserializeCudaEngine(buffer.get(), size, nullptr));
 }
@@ -115,14 +135,13 @@ bool BaseTask::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& builder,
 {
     check(isFileExists(params_.onnx_fp), __FILE__, __LINE__, "ONNX file not exists");
     auto parsed = parser->parseFromFile(
-        params_.onnx_fp.c_str(), static_cast<int>(gLogger.getReportableSeverity()));
+        params_.onnx_fp.c_str(), static_cast<int>(sample::gLogger.getReportableSeverity()));
     if (!parsed)
     {
-        gLogWarning << "Fail to parse the ONNX file " << params_.onnx_fp << std::endl;  
+        sample::gLogWarning << "Fail to parse the ONNX file " << params_.onnx_fp << std::endl; 
         return false;
     }
 
-    builder->setMaxBatchSize(params_.batch_size);
     config->setMaxWorkspaceSize(params_.max_workspace_size);
     if (params_.fp16)
     {
@@ -139,17 +158,17 @@ bool BaseTask::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& builder,
     return true;
 }
 
-bool BaseTask::infer(std::string img_fp)
+bool BaseTask::infer(const std::vector<std::string>& fps)
 {
     return true;
 }
 
-bool BaseTask::inferCommon(std::string img_fp, samplesCommon::BufferManager& buffers)
+bool BaseTask::inferCommon(const std::vector<std::string>& img_fps, samplesCommon::BufferManager& buffers)
 {
     // Read the input data into the managed buffers
     Timer timer;
     timer.start("inferCommon-processInput");
-    processInput(img_fp, buffers);
+    processInput(img_fps, buffers);
     timer.stop("inferCommon-processInput");
 
     // Memcpy from host input buffers to device input buffers
@@ -159,14 +178,14 @@ bool BaseTask::inferCommon(std::string img_fp, samplesCommon::BufferManager& buf
     timer.stop("inferCommon-H2D");
 
     timer.start("inferCommon-enqueue");
-    bool status = context_->enqueue(params_.batch_size, buffers.getDeviceBindings().data(), _stream, nullptr);
+    bool status = context_->enqueueV2(buffers.getDeviceBindings().data(), _stream, nullptr);
     cudaStreamSynchronize(_stream);
     //cudaDeviceSynchronize();
     timer.stop("inferCommon-enqueue");
 
     if (!status)
     {
-        gLogWarning << "Fail to forward in TensorRT engine" << std::endl;  
+        sample::gLogWarning << "Fail to forward in TensorRT engine" << std::endl;  
         return false;
     }
 
@@ -179,16 +198,28 @@ bool BaseTask::inferCommon(std::string img_fp, samplesCommon::BufferManager& buf
     return true;
 }
 
-void BaseTask::processInput(const std::string img_fp, const samplesCommon::BufferManager& buffers)
+void BaseTask::processInput(const std::vector<std::string>& img_fps, const samplesCommon::BufferManager& buffers)
 {
     float* host_data_buffer = static_cast<float*>(buffers.getHostBufferByIndex(0));
-    readImage(img_fp, host_data_buffer);
+    readImages(img_fps, host_data_buffer);
 }
 
-void BaseTask::readImage(const std::string fp, float* host_data)
+void BaseTask::readImages(const std::vector<std::string>& fps, float* host_data)
 {
-    const int input_h = input_dims_.d[1];
-    const int input_w = input_dims_.d[2];
+    auto& dims = params_.input_dims;
+    const int stride = dims.d[1] * dims.d[2] * dims.d[3]; // c * h * w
+    float* tmp_host_data = host_data;
+    for (auto& fp : fps)
+    {
+        readImage(fp, tmp_host_data);
+        tmp_host_data += stride;
+    }
+}
+
+void BaseTask::readImage(const std::string& fp, float* host_data)
+{
+    const int input_h = params_.input_dims.d[2];
+    const int input_w = params_.input_dims.d[3];
     Timer timer;
     timer.start("readImage-imread");
     check(isFileExists(fp), __FILE__, __LINE__, "Image file not exists");
@@ -196,9 +227,7 @@ void BaseTask::readImage(const std::string fp, float* host_data)
     timer.stop("readImage-imread");
     if (orig_image_.empty())
     {
-        //std::cerr << "Error reading image " << fp << std::endl;
         check(true != orig_image_.empty(), __FILE__, __LINE__, "Fail to read an image");
-        //exit(0);
     }
     cv::Mat image; // for debugging
     timer.start("readImage-resize");
@@ -220,8 +249,6 @@ void BaseTask::readImage(const std::string fp, float* host_data)
     for (int c = 0; c < channels; c++) {
         for (int j = 0, hw = input_w * input_h; j < hw; j++) {
             host_data[c * hw + j] = (float(img_data[channels * j + 2 - c]) - mean[c]) / std[c];
-            //host_data[c * hw + j] = float(img_data[channels * j + 2 - c]);
-            //host_data[c * hw + j] = float(img_data[c * hw + j]);
         }
     }        
     timer.stop("readImage-norm");

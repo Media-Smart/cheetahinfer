@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,12 @@
 #ifndef BATCH_STREAM_H
 #define BATCH_STREAM_H
 
+#include "NvInfer.h"
+#include "common.h"
 #include <algorithm>
 #include <assert.h>
 #include <stdio.h>
 #include <vector>
-
-#include <NvInfer.h>
-
-#include "common.h"
 
 class IBatchStream
 {
@@ -36,7 +34,6 @@ public:
     virtual int getBatchesRead() const = 0;
     virtual int getBatchSize() const = 0;
     virtual nvinfer1::Dims getDims() const = 0;
-    virtual nvinfer1::Dims getImageDims() const = 0;
 };
 
 class MNISTBatchStream : public IBatchStream
@@ -94,12 +91,7 @@ public:
 
     nvinfer1::Dims getDims() const override
     {
-        return mDims;
-    }
-
-    nvinfer1::Dims getImageDims() const override
-    {
-        return Dims3{1, 28, 28};
+        return Dims{4, {mBatchSize, mDims.d[0], mDims.d[1], mDims.d[2]}, {}};
     }
 
 private:
@@ -195,9 +187,9 @@ public:
     {
     }
 
-    // This constructor expects that the dimensions include the batch dimension.
-    BatchStream(int maxBatches, nvinfer1::Dims dims, std::string listFile, std::vector<std::string> directories)
-        : mBatchSize(dims.d[0])
+    BatchStream(
+        int batchSize, int maxBatches, nvinfer1::Dims dims, std::string listFile, std::vector<std::string> directories)
+        : mBatchSize(batchSize)
         , mMaxBatches(maxBatches)
         , mDims(dims)
         , mListFile(listFile)
@@ -288,18 +280,16 @@ public:
         return mDims;
     }
 
-    nvinfer1::Dims getImageDims() const override
-    {
-        return Dims3{mDims.d[1], mDims.d[2], mDims.d[3]};
-    }
-
 private:
     float* getFileBatch()
     {
         return mFileBatch.data();
     }
 
-    float* getFileLabels() { return mFileLabels.data(); }
+    float* getFileLabels()
+    {
+        return mFileLabels.data();
+    }
 
     bool update()
     {
@@ -332,7 +322,7 @@ private:
                 return false;
             }
 
-            gLogInfo << "Batch #" << mFileCount << std::endl;
+            sample::gLogInfo << "Batch #" << mFileCount << std::endl;
             file.seekg(((mBatchCount * mBatchSize)) * 7);
 
             for (int i = 1; i <= mBatchSize; i++)
@@ -340,7 +330,7 @@ private:
                 std::string sName;
                 std::getline(file, sName);
                 sName = sName + ".ppm";
-                gLogInfo << "Calibrating with file " << sName << std::endl;
+                sample::gLogInfo << "Calibrating with file " << sName << std::endl;
                 fNames.emplace_back(sName);
             }
 

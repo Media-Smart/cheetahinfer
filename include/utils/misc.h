@@ -35,7 +35,7 @@ public:
     void stop(std::string name)
     {
         auto clock_stop = std::chrono::steady_clock::now();
-        gLogWarning << "Latency of "<< name << " is " << 1000 * timeSpan(clock_start_[name], clock_stop) << "ms" << std::endl;
+        sample::gLogWarning << "Latency of "<< name << " is " << 1000 * timeSpan(clock_start_[name], clock_stop) << "ms" << std::endl;
         clock_start_.erase(name);
     }
 

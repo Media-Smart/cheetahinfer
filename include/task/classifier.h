@@ -15,7 +15,7 @@ class Classifier: public BaseTask
 
 public:
     Classifier(const samplesCommon::OnnxSampleParams& params);
-    bool infer(std::string fp);
+    bool infer(const std::vector<std::string>& fps);
     bool verifyOutput();
 };
 

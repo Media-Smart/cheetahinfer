@@ -27,10 +27,10 @@
 #include "NvOnnxParser.h"
 #include "NvUffParser.h"
 
-#include "trtcommon/logger.h"
-#include "trtcommon/sampleUtils.h"
-#include "trtcommon/sampleOptions.h"
-#include "trtcommon/sampleEngines.h"
+#include "logger.h"
+#include "sampleUtils.h"
+#include "sampleOptions.h"
+#include "sampleEngines.h"
 
 using namespace nvinfer1;
 

@@ -12,16 +12,16 @@ CheetahInfer has several dependencies:
 - OpenCV
   - tested on version 4.3.0
 - CUDA
-  - tested on version 10.1
+  - tested on version 10.2
 - TensorRT
-  - tested on version 6.0.1.5
+  - tested on version 7.1.3.4
 - cuDNN
   - optional
-  - tested on version 7.6.5
+  - tested on version 8.0.0
 - GCC
   - tested on version 5.4.0
 
-After the installation of above dependencies, we need modify the `TENSORRT_INSTALL_DIR` and `OPENCV_INSTALL_DIR` in file `Makefile.config` and the environment variable `LD_LIBRARY_PATH` accordingly.
+After the installation of above dependencies, we need modify the `TENSORRT_INSTALL_DIR` and `OPENCV_INSTALL_DIR` in file `Makefile.config` and the environment variable `LD_LIBRARY_PATH` and `PATH` accordingly.
 
 ## Preparation for model and data
 - Prepare the ONNX file
@@ -35,12 +35,6 @@ After the installation of above dependencies, we need modify the `TENSORRT_INSTA
 ## Compilation and running
 ```
 cd classifier
-make -j12
-./build/main --imgfp /path/to/image
-```
-or
-```
-cd retinanet
 make -j12
 ./build/main --imgfp /path/to/image
 ```

@@ -24,8 +24,8 @@
 
 #include "NvInfer.h"
 
-#include "trtcommon/sampleUtils.h"
-#include "trtcommon/sampleOptions.h"
+#include "sampleUtils.h"
+#include "sampleOptions.h"
 
 namespace sample
 {
