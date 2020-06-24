@@ -1,5 +1,5 @@
 ## Introduction
-CheetahInfer is a pure C++ inference SDK based on TensorRT, which supports fast inference of classifier and object detector.
+CheetahInfer is a pure C++ inference SDK based on TensorRT, which supports fast inference of CNNs based computer vision model.
 
 ## Features
 
@@ -27,10 +27,8 @@ After the installation of above dependencies, we need modify the `TENSORRT_INSTA
 - Prepare the ONNX file
   - If your model has a PyTorch format, you can use [vedadep](https://github.com/Media-Smart/volksdep) to convert PyTorch model to ONNX model.
 - Modify the ONNX file path
-  - Some related configurations in `main.cpp` in `classifier` or `retinanet` folder also need be corrected accordingly.
+  - Some related configurations in `main.cpp` in `classifier` folder also need be corrected accordingly.
 - Get some images for testing
-- Fill in anchor setting in `setHp` function of file `src/task/retinanet.cpp`
-  - If you are only interested in classifier, you need not do this.
 
 ## Compilation and running
 ```
