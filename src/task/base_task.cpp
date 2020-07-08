@@ -41,7 +41,7 @@ void BaseTask::build()
 
 void BaseTask::getBindingDimensions()
 {
-    for (int ii = 1; ii < context_->getNbBindings(); ii++)
+    for (int ii = 1; ii < engine_->getNbBindings(); ii++)
     {
         auto output_dims = context_->getBindingDimensions(ii);
         output_dims_vec_.push_back(output_dims);
