@@ -11,28 +11,28 @@
 
 namespace cheetahinfer{
 
-class RetinaNet: public BaseTask
-{
-    template <typename T>
-    using SampleUniquePtr = std::unique_ptr<T, samplesCommon::InferDeleter>;
+    class RetinaNet: public BaseTask
+    {
+        template <typename T>
+            using SampleUniquePtr = std::unique_ptr<T, samplesCommon::InferDeleter>;
 
-public:
-    RetinaNet(const samplesCommon::OnnxSampleParams& params);
-    bool infer(const std::vector<std::string>& fps) override;
-    bool verifyOutput() override;
+        public:
+        RetinaNet(const samplesCommon::OnnxSampleParams& params);
+        bool infer(const std::vector<std::string>& fps) override;
+        bool verifyOutput() override;
 
-private:
-    // variables
-    int top_n_;
-	int detections_per_im_;
-    float score_thresh_;
-    float nms_thresh_;
-    std::vector<std::vector<float>> anchors_;
+        private:
+        // variables
+        int top_n_;
+        int detections_per_im_;
+        float score_thresh_;
+        float nms_thresh_;
+        std::vector<std::vector<float>> anchors_;
 
-    // functions
-	void setHp();
-    void addPlugin(SampleUniquePtr<nvinfer1::INetworkDefinition> &network) override;
-};
+        // functions
+        void setHp();
+        void addPlugin(SampleUniquePtr<nvinfer1::INetworkDefinition> &network) override;
+    };
 
 } // namespace cheetahinfer
 

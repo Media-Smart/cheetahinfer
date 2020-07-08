@@ -78,22 +78,22 @@ int main(int argc, char** argv)
 
     sample::gLogInfo << "Building and running a GPU inference engine for RetinaNet" << std::endl;
 
-	cheetahinfer::Timer timer;
+    cheetahinfer::Timer timer;
     task.build();
-	for (int i = 0; i < 1; i++)
-	{
-		sample::gLogWarning << "---------------------------------------" <<std::endl;
-		timer.start("main-infer");
+    for (int i = 0; i < 1; i++)
+    {
+        sample::gLogWarning << "---------------------------------------" <<std::endl;
+        timer.start("main-infer");
         std::vector<std::string> fps = {args.imgfp, args.imgfp};
-		if (!task.infer(fps))
-		{
-		}
+        if (!task.infer(fps))
+        {
+        }
         else
         {
             task.verifyOutput();
         }
-		timer.stop("main-infer");
-	}
+        timer.stop("main-infer");
+    }
     return 0;
 }
 

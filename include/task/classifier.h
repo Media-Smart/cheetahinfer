@@ -8,16 +8,16 @@
 
 namespace cheetahinfer{
 
-class Classifier: public BaseTask
-{
-    template <typename T>
-    using SampleUniquePtr = std::unique_ptr<T, samplesCommon::InferDeleter>;
+    class Classifier: public BaseTask
+    {
+        template <typename T>
+            using SampleUniquePtr = std::unique_ptr<T, samplesCommon::InferDeleter>;
 
-public:
-    Classifier(const samplesCommon::OnnxSampleParams& params);
-    bool infer(const std::vector<std::string>& fps);
-    bool verifyOutput();
-};
+        public:
+        Classifier(const samplesCommon::OnnxSampleParams& params);
+        bool infer(const std::vector<std::string>& fps);
+        bool verifyOutput();
+    };
 
 } // namespace cheetahinfer
 

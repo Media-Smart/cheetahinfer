@@ -34,212 +34,212 @@
 #define RETINANET_PLUGIN_NAMESPACE ""
 
 namespace cheetahinfer {
-namespace retinanet_plugin {
+    namespace retinanet_plugin {
 
-using namespace nvinfer1;
+        using namespace nvinfer1;
 
-class DecodePlugin : public IPluginV2DynamicExt {
-  float _score_thresh;
-  int _top_n;
-  std::vector<float> _anchors;
-  float _scale;
+        class DecodePlugin : public IPluginV2DynamicExt {
+            float _score_thresh;
+            int _top_n;
+            std::vector<float> _anchors;
+            float _scale;
 
-  size_t _height;
-  size_t _width;
-  size_t _num_anchors;
-  size_t _num_classes;
-  mutable int size = -1;
+            size_t _height;
+            size_t _width;
+            size_t _num_anchors;
+            size_t _num_classes;
+            mutable int size = -1;
 
-protected:
-  void deserialize(void const* data, size_t length) {
-    const char* d = static_cast<const char*>(data);
-    read(d, _score_thresh);
-    read(d, _top_n);
-    size_t anchors_size;
-    read(d, anchors_size);
-    while( anchors_size-- ) {
-      float val;
-      read(d, val);
-      _anchors.push_back(val);
-    }
-    read(d, _scale);
-    read(d, _height);
-    read(d, _width);
-    read(d, _num_anchors);
-    read(d, _num_classes);
-  }
+            protected:
+            void deserialize(void const* data, size_t length) {
+                const char* d = static_cast<const char*>(data);
+                read(d, _score_thresh);
+                read(d, _top_n);
+                size_t anchors_size;
+                read(d, anchors_size);
+                while( anchors_size-- ) {
+                    float val;
+                    read(d, val);
+                    _anchors.push_back(val);
+                }
+                read(d, _scale);
+                read(d, _height);
+                read(d, _width);
+                read(d, _num_anchors);
+                read(d, _num_classes);
+            }
 
-  size_t getSerializationSize() const override {
-    return sizeof(_score_thresh) + sizeof(_top_n)
-      + sizeof(size_t) + sizeof(float) * _anchors.size() + sizeof(_scale)
-      + sizeof(_height) + sizeof(_width) + sizeof(_num_anchors) + sizeof(_num_classes);
-  }
+            size_t getSerializationSize() const override {
+                return sizeof(_score_thresh) + sizeof(_top_n)
+                    + sizeof(size_t) + sizeof(float) * _anchors.size() + sizeof(_scale)
+                    + sizeof(_height) + sizeof(_width) + sizeof(_num_anchors) + sizeof(_num_classes);
+            }
 
-  void serialize(void *buffer) const override {
-    char* d = static_cast<char*>(buffer);
-    write(d, _score_thresh);
-    write(d, _top_n);
-    write(d, _anchors.size());
-    for( auto &val : _anchors ) {
-      write(d, val);
-    }
-    write(d, _scale);
-    write(d, _height);
-    write(d, _width);
-    write(d, _num_anchors);
-    write(d, _num_classes);
-  }
+            void serialize(void *buffer) const override {
+                char* d = static_cast<char*>(buffer);
+                write(d, _score_thresh);
+                write(d, _top_n);
+                write(d, _anchors.size());
+                for( auto &val : _anchors ) {
+                    write(d, val);
+                }
+                write(d, _scale);
+                write(d, _height);
+                write(d, _width);
+                write(d, _num_anchors);
+                write(d, _num_classes);
+            }
 
-public:
-  DecodePlugin(float score_thresh, int top_n, std::vector<float> const& anchors, int scale)
-    : _score_thresh(score_thresh), _top_n(top_n), _anchors(anchors), _scale(scale) {}
+            public:
+            DecodePlugin(float score_thresh, int top_n, std::vector<float> const& anchors, int scale)
+                : _score_thresh(score_thresh), _top_n(top_n), _anchors(anchors), _scale(scale) {}
 
-  DecodePlugin(float score_thresh, int top_n, std::vector<float> const& anchors, int scale,
-    size_t height, size_t width, size_t num_anchors, size_t num_classes)
-    : _score_thresh(score_thresh), _top_n(top_n), _anchors(anchors), _scale(scale),
-      _height(height), _width(width), _num_anchors(num_anchors), _num_classes(num_classes) {}
+            DecodePlugin(float score_thresh, int top_n, std::vector<float> const& anchors, int scale,
+                    size_t height, size_t width, size_t num_anchors, size_t num_classes)
+                : _score_thresh(score_thresh), _top_n(top_n), _anchors(anchors), _scale(scale),
+                _height(height), _width(width), _num_anchors(num_anchors), _num_classes(num_classes) {}
 
-  DecodePlugin(void const* data, size_t length) {
-      this->deserialize(data, length);
-  }
+            DecodePlugin(void const* data, size_t length) {
+                this->deserialize(data, length);
+            }
 
-  const char *getPluginType() const override {
-    return RETINANET_PLUGIN_NAME;
-  }
- 
-  const char *getPluginVersion() const override {
-    return RETINANET_PLUGIN_VERSION;
-  }
-  
-  int getNbOutputs() const override {
-    return 3;
-  }
+            const char *getPluginType() const override {
+                return RETINANET_PLUGIN_NAME;
+            }
 
-  DimsExprs getOutputDimensions(int outputIndex, const DimsExprs *inputs,
-    int nbInputs, IExprBuilder &exprBuilder) override 
-  {
-    DimsExprs output(inputs[0]);
-    output.d[1] = exprBuilder.constant(_top_n * (outputIndex == 1 ? 4 : 1));
-    output.d[2] = exprBuilder.constant(1);
-    output.d[3] = exprBuilder.constant(1);
+            const char *getPluginVersion() const override {
+                return RETINANET_PLUGIN_VERSION;
+            }
 
-    return output;
-  }
+            int getNbOutputs() const override {
+                return 3;
+            }
 
-  bool supportsFormatCombination(int pos, const PluginTensorDesc *inOut, 
-    int nbInputs, int nbOutputs) override
-  {
-    assert(nbInputs == 2);
-    assert(nbOutputs == 3);
-    assert(pos < 5);
-    return inOut[pos].type == DataType::kFLOAT && inOut[pos].format == nvinfer1::PluginFormat::kLINEAR;
-  }
+            DimsExprs getOutputDimensions(int outputIndex, const DimsExprs *inputs,
+                    int nbInputs, IExprBuilder &exprBuilder) override 
+            {
+                DimsExprs output(inputs[0]);
+                output.d[1] = exprBuilder.constant(_top_n * (outputIndex == 1 ? 4 : 1));
+                output.d[2] = exprBuilder.constant(1);
+                output.d[3] = exprBuilder.constant(1);
 
-  int initialize() override { return 0; }
+                return output;
+            }
 
-  void terminate() override {}
+            bool supportsFormatCombination(int pos, const PluginTensorDesc *inOut, 
+                    int nbInputs, int nbOutputs) override
+            {
+                assert(nbInputs == 2);
+                assert(nbOutputs == 3);
+                assert(pos < 5);
+                return inOut[pos].type == DataType::kFLOAT && inOut[pos].format == nvinfer1::PluginFormat::kLINEAR;
+            }
 
-  size_t getWorkspaceSize(const PluginTensorDesc *inputs, 
-    int nbInputs, const PluginTensorDesc *outputs, int nbOutputs) const override 
-  {
-    if (size < 0) {
-      size = cuda::decode(inputs->dims.d[0], nullptr, nullptr, _height, _width, _scale,
-        _num_anchors, _num_classes, _anchors, _score_thresh, _top_n, 
-        nullptr, 0, nullptr);
-    }
-    return size;
-  }
+            int initialize() override { return 0; }
 
-  int enqueue(const PluginTensorDesc *inputDesc, 
-    const PluginTensorDesc *outputDesc, const void *const *inputs, 
-    void *const *outputs, void *workspace, cudaStream_t stream)  
-  {
-    
-    return cuda::decode(inputDesc->dims.d[0], inputs, outputs, _height, _width, _scale,
-      _num_anchors, _num_classes, _anchors, _score_thresh, _top_n,
-      workspace, getWorkspaceSize(inputDesc, 2, outputDesc, 3), stream);
-    
-  }
+            void terminate() override {}
 
-  void destroy() override {
-    delete this;
-  };
+            size_t getWorkspaceSize(const PluginTensorDesc *inputs, 
+                    int nbInputs, const PluginTensorDesc *outputs, int nbOutputs) const override 
+            {
+                if (size < 0) {
+                    size = cuda::decode(inputs->dims.d[0], nullptr, nullptr, _height, _width, _scale,
+                            _num_anchors, _num_classes, _anchors, _score_thresh, _top_n, 
+                            nullptr, 0, nullptr);
+                }
+                return size;
+            }
 
-  const char *getPluginNamespace() const override {
-    return RETINANET_PLUGIN_NAMESPACE;
-  }
-  
-  void setPluginNamespace(const char *N) override {
-  }
+            int enqueue(const PluginTensorDesc *inputDesc, 
+                    const PluginTensorDesc *outputDesc, const void *const *inputs, 
+                    void *const *outputs, void *workspace, cudaStream_t stream)  
+            {
 
-  // IPluginV2Ext Methods
-  DataType getOutputDataType(int index, const DataType* inputTypes, int nbInputs) const
-  {
-    assert(index < 3);
-    return DataType::kFLOAT;
-  }
+                return cuda::decode(inputDesc->dims.d[0], inputs, outputs, _height, _width, _scale,
+                        _num_anchors, _num_classes, _anchors, _score_thresh, _top_n,
+                        workspace, getWorkspaceSize(inputDesc, 2, outputDesc, 3), stream);
 
-  void configurePlugin(const DynamicPluginTensorDesc *in, int nbInputs, 
-    const DynamicPluginTensorDesc *out, int nbOutputs)
-  {
-    assert(nbInputs == 2);
-    assert(nbOutputs == 3);
-    auto const& scores_dims = in[0].desc.dims;
-    auto const& boxes_dims = in[1].desc.dims;
-    assert(scores_dims.d[2] == boxes_dims.d[2]);
-    assert(scores_dims.d[3] == boxes_dims.d[3]);
-    _height = scores_dims.d[2];
-    _width = scores_dims.d[3];
-    _num_anchors = boxes_dims.d[1] / 4; 
-    _num_classes = scores_dims.d[1] / _num_anchors;
-  }
+            }
 
-  IPluginV2DynamicExt *clone() const  {
-    return new DecodePlugin(_score_thresh, _top_n, _anchors, _scale, _height, _width, 
-      _num_anchors, _num_classes);
-  }
+            void destroy() override {
+                delete this;
+            };
 
-private:
-  template<typename T> void write(char*& buffer, const T& val) const {
-    *reinterpret_cast<T*>(buffer) = val;
-    buffer += sizeof(T);
-  }
+            const char *getPluginNamespace() const override {
+                return RETINANET_PLUGIN_NAMESPACE;
+            }
 
-  template<typename T> void read(const char*& buffer, T& val) {
-    val = *reinterpret_cast<const T*>(buffer);
-    buffer += sizeof(T);
-  }
-};
+            void setPluginNamespace(const char *N) override {
+            }
 
-class DecodePluginCreator : public IPluginCreator {
-public:
-  DecodePluginCreator() {}
+            // IPluginV2Ext Methods
+            DataType getOutputDataType(int index, const DataType* inputTypes, int nbInputs) const
+            {
+                assert(index < 3);
+                return DataType::kFLOAT;
+            }
 
-  const char *getPluginName () const override {
-    return RETINANET_PLUGIN_NAME;
-  }
+            void configurePlugin(const DynamicPluginTensorDesc *in, int nbInputs, 
+                    const DynamicPluginTensorDesc *out, int nbOutputs)
+            {
+                assert(nbInputs == 2);
+                assert(nbOutputs == 3);
+                auto const& scores_dims = in[0].desc.dims;
+                auto const& boxes_dims = in[1].desc.dims;
+                assert(scores_dims.d[2] == boxes_dims.d[2]);
+                assert(scores_dims.d[3] == boxes_dims.d[3]);
+                _height = scores_dims.d[2];
+                _width = scores_dims.d[3];
+                _num_anchors = boxes_dims.d[1] / 4; 
+                _num_classes = scores_dims.d[1] / _num_anchors;
+            }
 
-  const char *getPluginVersion () const override {
-    return RETINANET_PLUGIN_VERSION;
-  }
- 
-  const char *getPluginNamespace() const override {
-    return RETINANET_PLUGIN_NAMESPACE;
-  }
+            IPluginV2DynamicExt *clone() const  {
+                return new DecodePlugin(_score_thresh, _top_n, _anchors, _scale, _height, _width, 
+                        _num_anchors, _num_classes);
+            }
 
-  
-  IPluginV2DynamicExt *deserializePlugin (const char *name, const void *serialData, size_t serialLength) override {
-    return new DecodePlugin(serialData, serialLength);
-  }
+            private:
+            template<typename T> void write(char*& buffer, const T& val) const {
+                *reinterpret_cast<T*>(buffer) = val;
+                buffer += sizeof(T);
+            }
 
-  void setPluginNamespace(const char *N) override {}
-  const PluginFieldCollection *getFieldNames() override { return nullptr; }
-  IPluginV2DynamicExt *createPlugin (const char *name, const PluginFieldCollection *fc) override { return nullptr; }
-};
+            template<typename T> void read(const char*& buffer, T& val) {
+                val = *reinterpret_cast<const T*>(buffer);
+                buffer += sizeof(T);
+            }
+        };
 
-REGISTER_TENSORRT_PLUGIN(DecodePluginCreator);
+        class DecodePluginCreator : public IPluginCreator {
+            public:
+                DecodePluginCreator() {}
 
-} // namespace retinanet_plugin 
+                const char *getPluginName () const override {
+                    return RETINANET_PLUGIN_NAME;
+                }
+
+                const char *getPluginVersion () const override {
+                    return RETINANET_PLUGIN_VERSION;
+                }
+
+                const char *getPluginNamespace() const override {
+                    return RETINANET_PLUGIN_NAMESPACE;
+                }
+
+
+                IPluginV2DynamicExt *deserializePlugin (const char *name, const void *serialData, size_t serialLength) override {
+                    return new DecodePlugin(serialData, serialLength);
+                }
+
+                void setPluginNamespace(const char *N) override {}
+                const PluginFieldCollection *getFieldNames() override { return nullptr; }
+                IPluginV2DynamicExt *createPlugin (const char *name, const PluginFieldCollection *fc) override { return nullptr; }
+        };
+
+        REGISTER_TENSORRT_PLUGIN(DecodePluginCreator);
+
+    } // namespace retinanet_plugin 
 } // namespace cheetahinfer 
 
 #undef RETINANET_PLUGIN_NAME
