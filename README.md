@@ -37,7 +37,7 @@ export PATH="${PATH}:/usr/local/cuda-10.2/bin"
 ## Compilation and running
 ```
 cd classifier
-make -j12
+make -j4
 ./build/main --imgfp /path/to/image
 ```
 If you want speficy which GPU to use, you can make it by setting the environment variable `CUDA_VISIBLE_DEVICES`.
